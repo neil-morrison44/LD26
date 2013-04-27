@@ -10,6 +10,7 @@
 	border-color: black;
 }
 </style>
+<script src="data.js" ></script>
 <script type="text/javascript">
 function loadImage(src){
 	var new_image = new Image();
@@ -17,6 +18,7 @@ function loadImage(src){
 	return new_image
 }
 var windows = [];
+var deadWindows = [];
 var w = {"x":10,"y":10,"width":200,"height":300,
 		"text":'Meet Sexy Giraffes',"image":null,'age':0,"activation":2,
 		"title":"Sexy Giraffes",'butx':25,'buty':2};
@@ -27,25 +29,69 @@ var gameCxt;
 var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin.png'),
 				 'blush':loadImage('claud-blush.png')
 }
-var activeSpots = [];
+function clicked(x,y){
+	var selected = null;
+	for(var i = 0; i < windows.length;i++){
+		var w = windows[i];
+		var butx = w.x+w.width-w.butx;
+		var buty = w.y+w.buty;
+		if ((x > butx-5)&&(y > buty-5)&&(x > butx)&&(y < buty+25)&&(x < butx+25)){
+			selected = i;
+		}
+	}
+	if (selected != null){
+		var popup = windows.splice(selected,1);
+		popup.height = 0;
+		var angle = Math.round(Math.random()*360);
+		popup['incX'] = Math.cos(angle*(Math.PI/180));
+		popup['incY'] = Math.sin(angle*(Math.PI/180));
+		deadWindows.push(popup);
+	}
+}
 
 function init(){
 	gameCnv = document.getElementById('gameCanvas');
 	gameCxt = gameCnv.getContext('2d');
 	console.log('init');
 	render();
+	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)}
 }
+
+function handleDeadWindows(){
+	var offScreen = [];
+	for (var i = 0; i < deadWindows.length;i++){
+		deadWindows[i].x += deadWindows[i].incX;
+		deadWindows[i].y += deadWindows[i].incY;
+		drawWindow(deadWindows[i]);
+		if ((deadWindows[i].x+deadWindows[i].width)<0){
+			offScreen.push(i);
+		}
+		else if ((deadWindows[i].x)>gameCnv.width){
+			offScreen.push(i);
+		}
+		else if((deadWindows[i].y < 0)||()){}
+	}
+}
+
 function render(){
-	console.log(windows.length);
 	window.requestAnimFrame(render);
+	gameCxt.clearRect(0,0,gameCnv.width,gameCnv.height);
+	drawSlide();
+	handleDeadWindows();
+	
 	
 	for (var i = 0;i < windows.length;i++){
 		drawWindow(windows[i]);
 	}
-	drawClaud(0,0);
+	drawClaud(Math.random(),0);
+	addPopup();
 }
 function drawWindow(w){
+	
 	gameCxt.save();
+	gameCxt.lineWidth = 2;
+	gameCxt.fillStyle = 'white';
+	gameCxt.fillRect(w.x,w.y,w.width,w.height);
 	switch(w.activation){
 		case 0:
 		gameCxt.strokeStyle = 'gray';
@@ -72,10 +118,41 @@ function drawWindow(w){
 }
 
 function drawClaud(jaw,blush){
-	gameCxt.drawImage(claudImgs.body,0,0);
+	gameCxt.drawImage(claudImgs.body,0,420);
+	gameCxt.drawImage(claudImgs.chin,0+(jaw*2),420+(jaw*10));
+	gameCxt.globalAlpha = blush;
+	gameCxt.drawImage(claudImgs.blush,0,420);
+	gameCxt.globalAlpha = 1;
 }
 
-
+function drawSlide(){
+	gameCxt.save();
+	gameCxt.fillStyle = 'blue';
+	gameCxt.strokeStyle = 'black';
+	gameCxt.strokeRect(150,10,700,500);
+	gameCxt.restore();
+}
+function addPopup(){
+	if (windows.length < 2 && Math.random() < 0.05){
+		windows.push(genPopup());
+	}
+}
+function genPopup(){
+	var popup = {};
+	popup['title'] = "fheifhsiehf";
+	popup['x'] = (Math.random()*400)+150;
+	popup['y'] = (Math.random()*500)+10;
+	popup['width'] = (Math.random()*200)+50;
+	popup['height'] = (Math.random()*300)+50;
+	popup['text'] = "ehheheh";
+	popup['activation'] = 2;
+	popup['butx'] = 25; 
+	popup['buty'] = 2;
+	return popup;
+}
+function genSlide(){
+	
+}
 window.requestAnimFrame = (function(){
   return  window.requestAnimationFrame       ||
           window.webkitRequestAnimationFrame ||
@@ -84,6 +161,8 @@ window.requestAnimFrame = (function(){
             window.setTimeout(callback, 1000 / 60);
           };
 })();
+
+
 
 </script>
 
