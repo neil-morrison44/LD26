@@ -12,11 +12,15 @@
 </style>
 <script src="data.js" ></script>
 <script type="text/javascript">
+String.prototype.capitalize = function() {
+    return this.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+};
 function loadImage(src){
 	var new_image = new Image();
 	new_image.src = src;
 	return new_image
 }
+var killSwitch = false;
 var windows = [];
 var deadWindows = [];
 var w = {"x":10,"y":10,"width":200,"height":300,
@@ -25,9 +29,27 @@ var w = {"x":10,"y":10,"width":200,"height":300,
 windows.push(w); 
 var gameCnv;
 var gameCxt;
-
+var claudStats = {"embarrassment":0,"slide":0,'count':0};
 var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin.png'),
-				 'blush':loadImage('claud-blush.png')
+				 'blush':loadImage('claud-blush.png'),'speech':loadImage('speech.png')
+}
+var emCheckTimer = null;
+var slideCheckTimer = null;
+function embarrassmentCheck(){
+	claudStats.embarrassment+= ((windows.length)/150)-0.0025;
+	claudStats.embarrassment = Math.max(claudStats.embarrassment,0);
+	if (claudStats.embarrassment > 1){
+		//game over
+		killSwitch = true;
+		alert('Game Over');
+		window.clearInterval(emCheckTimer);
+	}
+}
+function slideCheck(){
+	if (new Date() - currentSlide.date > 5000){
+		claudStats.slide++;
+		genSlide();
+	}
 }
 function clicked(x,y){
 	var selected = null;
@@ -40,21 +62,31 @@ function clicked(x,y){
 		}
 	}
 	if (selected != null){
-		var popup = windows.splice(selected,1);
-		popup.height = 0;
-		var angle = Math.round(Math.random()*360);
-		popup['incX'] = Math.cos(angle*(Math.PI/180));
-		popup['incY'] = Math.sin(angle*(Math.PI/180));
+		var speed = 15;
+		claudStats.embarrassment-= 0.08;
+		claudStats.count++;
+		var popup = windows.splice(selected,1)[0];
+		popup['height'] = 0;
+		popup['activation'] = 0;
+		var angle = Math.round(Math.random()*140)+20;
+		popup['incX'] = Math.cos(angle*(Math.PI/180))*speed;
+		popup['incY'] = Math.sin(angle*(Math.PI/180))*speed;
+		
 		deadWindows.push(popup);
 	}
 }
 
 function init(){
+	killSwitch = false;
+	emCheckTimer = window.setInterval(embarrassmentCheck,1000/10);
+	slideCheckTimer = window.setInterval(slideCheck,1000/2);
+	var claudStats = {"embarrasment":0,"slide":0,'count':0};
 	gameCnv = document.getElementById('gameCanvas');
 	gameCxt = gameCnv.getContext('2d');
 	console.log('init');
 	render();
-	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)}
+	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)};
+	genSlide();
 }
 
 function handleDeadWindows(){
@@ -69,33 +101,59 @@ function handleDeadWindows(){
 		else if ((deadWindows[i].x)>gameCnv.width){
 			offScreen.push(i);
 		}
-		else if((deadWindows[i].y < 0)||()){}
+		else if((deadWindows[i].y < 0)||(deadWindows[i].y > gameCnv.height)){
+			offScreen.push(i);
+		}
+	}
+	var offset = 0;
+	for(var i=0;i < offScreen.length;i++){
+		deadWindows.splice(i-(offset++),1);
 	}
 }
 
 function render(){
-	window.requestAnimFrame(render);
+	if (killSwitch === false){
+		window.requestAnimFrame(render);}
 	gameCxt.clearRect(0,0,gameCnv.width,gameCnv.height);
 	drawSlide();
+	drawStats();
 	handleDeadWindows();
-	
-	
+	drawEmbMeter();
 	for (var i = 0;i < windows.length;i++){
 		drawWindow(windows[i]);
 	}
-	drawClaud(Math.random(),0);
+	drawClaud(Math.random(),claudStats.embarrassment);
+	drawSpeech(currentSlide.speech);
 	addPopup();
+	
+	
+}
+function drawStats(){
+	gameCxt.save();
+	gameCxt.font = '20pt Arial';
+	gameCxt.fillText('slide '+(claudStats.slide+1),600,600);
+	gameCxt.fillText('Score '+(claudStats.count),400,600);
+	gameCxt.restore();
 }
 function drawWindow(w){
 	
 	gameCxt.save();
-	gameCxt.lineWidth = 2;
+	
 	gameCxt.fillStyle = 'white';
+	gameCxt.shadowColor = 'rgba(0, 0, 0, 0.8)';
+	gameCxt.shadowBlur = 20;
+	gameCxt.shadowOffsetX=5;
+	gameCxt.shadowOffsetY=10;
 	gameCxt.fillRect(w.x,w.y,w.width,w.height);
+	gameCxt.restore();
+	gameCxt.save();
+	gameCxt.lineWidth = 2;
+	var buttColour = 'red';
 	switch(w.activation){
 		case 0:
 		gameCxt.strokeStyle = 'gray';
 		gameCxt.fillStyle = 'gray';
+		buttColour = "rgba(30,30,30,1)";
 		break;
 		case 1:
 		gameCxt.strokeStyle = 'blue';
@@ -108,7 +166,7 @@ function drawWindow(w){
 	}
 	gameCxt.strokeRect(w.x,w.y,w.width,w.height);
 	gameCxt.fillRect(w.x,w.y,w.width,25);
-	gameCxt.fillStyle = 'red';
+	gameCxt.fillStyle = buttColour;
 	gameCxt.fillRect(w.x+w.width-w.butx,w.y+w.buty,20,20);
 	gameCxt.fillStyle = 'white';
 	gameCxt.font = '15pt Arial';
@@ -118,11 +176,28 @@ function drawWindow(w){
 }
 
 function drawClaud(jaw,blush){
+	blush = Math.max(0,blush);
+	gameCxt.save();
 	gameCxt.drawImage(claudImgs.body,0,420);
 	gameCxt.drawImage(claudImgs.chin,0+(jaw*2),420+(jaw*10));
 	gameCxt.globalAlpha = blush;
 	gameCxt.drawImage(claudImgs.blush,0,420);
-	gameCxt.globalAlpha = 1;
+	gameCxt.restore();
+}
+
+function drawSpeech(text){
+	var x = 120;
+	var height= 92;
+	var y = 430;
+	var length = (text.length*6)+10;
+	gameCxt.save();
+	gameCxt.globalAlpha = 0.8;
+	gameCxt.drawImage(claudImgs.speech,0,0,93,182,x,y,93,height);
+	gameCxt.drawImage(claudImgs.speech,93,0,52,182,x+93,y,(length),height);
+	gameCxt.drawImage(claudImgs.speech,145,0,62,182,x+93+(length),y,62,height);
+	gameCxt.font = "10pt Verdana";
+	gameCxt.fillText(text,x+50,y+((height/2)));
+	gameCxt.restore();
 }
 
 function drawSlide(){
@@ -130,11 +205,28 @@ function drawSlide(){
 	gameCxt.fillStyle = 'blue';
 	gameCxt.strokeStyle = 'black';
 	gameCxt.strokeRect(150,10,700,500);
+	gameCxt.font = '20pt Arial';
+	gameCxt.fillText(currentSlide.title,150,200);
+	gameCxt.font = '17pt Arial';
+	gameCxt.fillStyle = 'gray';
+	gameCxt.fillText(currentSlide.text,150,250,695);
+	gameCxt.fillText(currentSlide.text2,150,274,695);
 	gameCxt.restore();
 }
 function addPopup(){
-	if (windows.length < 2 && Math.random() < 0.05){
+	if (windows.length < Math.round(3+(claudStats.slide/10)) && Math.random() < (0.025)){
 		windows.push(genPopup());
+	}
+}
+function buzzWord(listName){
+	var index = Math.random()*data.buzzwords[listName].length+1;
+	index = Math.floor(index);
+	var foundBuzz = data.buzzwords[listName][index];
+	if (foundBuzz != undefined){
+		return foundBuzz;
+	}
+	else{
+		return buzzWord(listName);
 	}
 }
 function genPopup(){
@@ -142,16 +234,56 @@ function genPopup(){
 	popup['title'] = "fheifhsiehf";
 	popup['x'] = (Math.random()*400)+150;
 	popup['y'] = (Math.random()*500)+10;
-	popup['width'] = (Math.random()*200)+50;
-	popup['height'] = (Math.random()*300)+50;
+	popup['width'] = (Math.random()*150)+100;
+	popup['height'] = (Math.random()*200)+150;
 	popup['text'] = "ehheheh";
 	popup['activation'] = 2;
 	popup['butx'] = 25; 
 	popup['buty'] = 2;
 	return popup;
 }
+var currentSlide={'speech':'','title':'','text':'','date':null};
+function buzzUp(s){
+	while(s.indexOf('{s}')!= -1){
+		s = s.replace('{s}',buzzWord('start'))
+	}
+	while(s.indexOf('{m}')!= -1){
+		s = s.replace('{m}',buzzWord('middle'))
+	}
+	while(s.indexOf('{e}')!= -1){
+		s = s.replace('{e}',buzzWord('end'))
+	}
+	return s;
+}
 function genSlide(){
-	
+	currentSlide.title = buzzUp("{s} {m} {e}").capitalize();
+	currentSlide.text = buzzUp("A {s} {m} {e} in a {s} based {m} {e}");
+	currentSlide.text2 = buzzUp("building a {s} {m} {m} {e} {e}.");
+	switch(Math.floor(Math.random()*5)){
+		case 0:
+			currentSlide.speech = buzzUp("Can we do {s} {m} {e} in a {s} {e} based {m} {e}?");
+		break;
+		case 1:
+			currentSlide.speech = buzzUp("{s} {m} {e}, sometimes {s} {e} when {e}");
+		break;
+		case 2:
+			currentSlide.speech = buzzUp("if {s} or {s} is best for our {e}");
+		break;
+		case 3:
+			currentSlide.speech = buzzUp("{s} on the other hand, {s} {m}");
+		break;
+		case 4:
+			currentSlide.speech = buzzUp("is {s} the future or just another {s} {e}?");
+		break;
+	}
+	currentSlide.date = new Date();
+}
+function drawEmbMeter(){
+	gameCxt.save();
+	var em = (claudStats.embarrassment);
+	gameCxt.strokeRect(10,400,40,100);
+	gameCxt.fillRect(10,500-(100*em),40,1+(100*em));
+	gameCxt.restore();
 }
 window.requestAnimFrame = (function(){
   return  window.requestAnimationFrame       ||
