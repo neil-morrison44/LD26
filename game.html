@@ -11,10 +11,84 @@
 }
 </style>
 <script type="text/javascript">
+function loadImage(src){
+	var new_image = new Image();
+	new_image.src = src;
+	return new_image
+}
+var windows = [];
+var w = {"x":10,"y":10,"width":200,"height":300,
+		"text":'Meet Sexy Giraffes',"image":null,'age':0,"activation":2,
+		"title":"Sexy Giraffes",'butx':25,'buty':2};
+windows.push(w); 
+var gameCnv;
+var gameCxt;
+
+var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin.png'),
+				 'blush':loadImage('claud-blush.png')
+}
+var activeSpots = [];
+
+function init(){
+	gameCnv = document.getElementById('gameCanvas');
+	gameCxt = gameCnv.getContext('2d');
+	console.log('init');
+	render();
+}
+function render(){
+	console.log(windows.length);
+	window.requestAnimFrame(render);
+	
+	for (var i = 0;i < windows.length;i++){
+		drawWindow(windows[i]);
+	}
+	drawClaud(0,0);
+}
+function drawWindow(w){
+	gameCxt.save();
+	switch(w.activation){
+		case 0:
+		gameCxt.strokeStyle = 'gray';
+		gameCxt.fillStyle = 'gray';
+		break;
+		case 1:
+		gameCxt.strokeStyle = 'blue';
+		gameCxt.fillStyle = 'blue';
+		break;
+		case 2:
+		gameCxt.strokeStyle = 'blue';
+		gameCxt.fillStyle = 'blue';
+		break;
+	}
+	gameCxt.strokeRect(w.x,w.y,w.width,w.height);
+	gameCxt.fillRect(w.x,w.y,w.width,25);
+	gameCxt.fillStyle = 'red';
+	gameCxt.fillRect(w.x+w.width-w.butx,w.y+w.buty,20,20);
+	gameCxt.fillStyle = 'white';
+	gameCxt.font = '15pt Arial';
+	gameCxt.fillRect(w.x+w.width-w.butx+2,w.y+w.buty+14,15,4);
+	gameCxt.fillText(w.title,w.x+5,w.y+18);
+	gameCxt.restore();
+}
+
+function drawClaud(jaw,blush){
+	gameCxt.drawImage(claudImgs.body,0,0);
+}
+
+
+window.requestAnimFrame = (function(){
+  return  window.requestAnimationFrame       ||
+          window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame    ||
+          function( callback ){
+            window.setTimeout(callback, 1000 / 60);
+          };
+})();
+
 </script>
 
 </head>
-<body>
+<body onload="init()">
 <canvas id="gameCanvas" width=900 height=600></canvas>
 </body>
 </html>
