@@ -10,7 +10,7 @@
 	border-color: black;
 }
 </style>
-<script src="data.js" ></script>
+<script src="data.js"></script>
 <script type="text/javascript">
 String.prototype.capitalize = function() {
     return this.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
@@ -32,6 +32,21 @@ function loadAudio(src_list){
 	return new_audio;
 	
 }
+function loadAllDataImgs(){
+	for(var i = 0;i<data.actors.length;i++){
+		data.actors[i].image = loadImage("advert-images/actors/"+data.actors[i].imagesrc);
+	}
+	for(var i = 0;i<data.hats.length;i++){
+		data.hats[i].image = loadImage("advert-images/hats/"+data.hats[i].imagesrc);
+	}
+	for(var i = 0;i<data.nips.length;i++){
+		data.nips[i].image = loadImage("advert-images/nips/"+data.nips[i].imagesrc);
+	}
+	for(var i = 0;i<data.pants.length;i++){
+		data.pants[i].image = loadImage("advert-images/pants/"+data.pants[i].imagesrc);
+	}
+}
+loadAllDataImgs();
 var bloopAudio = loadAudio([['bloop1.mp3','audio/mpeg'],['bloop1.ogg','audio/ogg']]);
 var windows = [];
 var deadWindows = [];
@@ -39,7 +54,7 @@ var gameOverImgs = {"tomb":loadImage('tombstone.png'),"background":loadImage('Ga
 var w = {"x":10,"y":10,"width":200,"height":300,
 		"text":'Meet Sexy Giraffes',"image":null,'age':0,"activation":2,
 		"title":"Sexy Giraffes",'butx':25,'buty':2};
-windows.push(w);
+//windows.push(w);
 var killSwitch; 
 var gameCnv;
 var gameCxt;
@@ -89,7 +104,7 @@ function clicked(x,y){
 		}
 	}
 	if (selected != null){
-		var speed = 15;
+		var speed = 25;
 		claudStats.embarrassment-= 0.08;
 		claudStats.count++;
 		var popup = windows.splice(selected,1)[0];
@@ -108,6 +123,7 @@ function init(){
 	backpos = 0;
 	clickToRestart = false;
 	killSwitch = false;
+	windows = [];
 	emCheckTimer = window.setInterval(embarrassmentCheck,1000/10);
 	slideCheckTimer = window.setInterval(slideCheck,1000/2);
 	claudStats = {"embarrassment":0,"slide":0,'count':0};
@@ -201,7 +217,9 @@ function drawWindow(w){
 	gameCxt.fillStyle = 'white';
 	gameCxt.font = '15pt Arial';
 	gameCxt.fillRect(w.x+w.width-w.butx+2,w.y+w.buty+14,15,4);
-	gameCxt.fillText(w.title,w.x+5,w.y+18);
+	gameCxt.fillText(w.title,w.x+5,w.y+18,w.width-35);
+	if(w.activation === 2){
+		gameCxt.drawImage(w.image,0,0,w.image.width,w.image.height,w.x+1,w.y+26,w.width-1,w.height-26);}
 	gameCxt.restore();
 }
 
@@ -251,28 +269,119 @@ function addPopup(){
 	}
 	
 }
-function buzzWord(listName){
-	var index = Math.random()*data.buzzwords[listName].length+1;
-	index = Math.floor(index);
-	var foundBuzz = data.buzzwords[listName][index];
-	if (foundBuzz != undefined){
-		return foundBuzz;
+function genAdvert(){
+	var sentence = choice(data.sentences);
+	var r = sexUp(sentence);
+	sentence = r[0];
+	var tags = r[1];
+	//pick actor
+	var actor = choice(data.actors);
+	sentence = sentence.replace('{a}',actor.name);
+	var key = sentence.replace(' ','');
+	if (key in imageStore){
+		return {"image":imageStore[key],"text":sentence};
 	}
-	else{
-		return buzzWord(listName);
+	var actorCnv = document.createElement("canvas");
+	actorCnv.width = actor.image.width+40;
+	actorCnv.height = actor.image.height+40;
+	actorCxt = actorCnv.getContext('2d');
+	actorCxt.drawImage(actor.image,20,20);
+	//pick clothes
+	var hat = null;
+	var nip = null;
+	var pant = null;
+	for(var i = 0; i < data.hats.length;i++){
+		if(tagmatch(tags,data.hats[i].tags)){
+			hat = data.hats[i];
+		}
 	}
+	for(var i = 0; i < data.nips.length;i++){
+		if(tagmatch(tags,data.nips[i].tags)){
+			nip = data.nips[i];
+		}
+	}
+	for(var i = 0; i < data.pants.length;i++){
+		if(tagmatch(tags,data.pants[i].tags)){
+			pant = data.pants[i];
+		}
+	}
+	//place clothes on actor
+	if (hat != null){
+		
+		var iw = hat.image.width;
+		
+		var scale = actor.hat.width/iw;
+		var ih = hat.image.height*scale;
+		var dx = (actor.hat.x)+20;
+		var dy = (actor.hat.y-(ih))+20;
+		actorCxt.drawImage(hat.image,0,0,iw,hat.image.height,dx,dy,actor.hat.width,ih);
+	}
+	if (nip != null){
+		for(var n = 0;n<actor.nips.length;n++){
+			var offw = (nip.image.width/2)-20;
+			var offh = (nip.image.height/2)-20;
+			actorCxt.drawImage(nip.image,actor.nips[n].x-offw,actor.nips[n].y-offh);
+		}
+	}
+	if (pant != null){		
+		var iw = pant.image.width;
+		
+		var scale = actor.pant.width/iw;
+		var ih = pant.image.height*scale;
+		var dx = (actor.pant.x)+20;
+		var dy = (actor.pant.y)+20;
+		actorCxt.drawImage(pant.image,0,0,iw,pant.image.height,dx,dy,actor.pant.width,ih);
+	}
+	//actorCxt.
+	var words = sentence.split(' ');
+	var wordy = 25;
+	actorCxt.font = '20pt sans-serif';
+	actorCxt.globalAlpha = 0.7;
+	for (w in words){
+		actorCxt.fillText(words[w],0,wordy);
+		wordy+=25;
+	}
+	actorCxt.globalAlpha = 1;
+	//var new_image = new Image();
+	//new_image.src = actorCnv.toDataURL("image/png");
+	var new_image = actorCnv;
+	imageStore[key] = new_image;
+	return {"image":new_image,"text":sentence};
 }
+function tagmatch(tags1,tags2){
+	for(var i = 0; i < tags1.length;i++){
+		for(var l = 0; l < tags2.length;l++){
+			if(tags1[i] === tags2[l]){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+function returnClothes(){
+	
+}
+function buzzWord(listName){
+	return choice(data.buzzwords[listName]);
+}
+var imageStore = {};
 function genPopup(){
 	var popup = {};
 	popup['title'] = "fheifhsiehf";
-	popup['x'] = (Math.random()*400)+150;
+	popup['x'] = (Math.random()*300)+50;
 	popup['y'] = (Math.random()*500)+10;
-	popup['width'] = (Math.random()*150)+100;
+	popup['width'] = (Math.random()*250)+150;
 	popup['height'] = (Math.random()*200)+150;
 	popup['text'] = "ehheheh";
 	popup['activation'] = 2;
 	popup['butx'] = 25; 
 	popup['buty'] = 2;
+	var ad = genAdvert();
+	popup['image'] = ad.image;
+	popup['text'] = ad.text;
+	
+	popup['title'] = ad.text;
+	//console.log(popup);
 	return popup;
 }
 var currentSlide={'speech':'','title':'','text':'','date':null};
@@ -288,6 +397,34 @@ function buzzUp(s){
 	}
 	return s;
 }
+function extendArr(arrayA,arrayB){
+	for(var i = 0;i < arrayB.length;i++){
+		arrayA.push(arrayB[i]);
+	}
+	return arrayA;
+}
+function sexUp(s){
+	var tags = [];
+	while(s.indexOf('{w}')!= -1){
+		var word_n_tags = choice(data.wordlist);
+		extendArr(tags,word_n_tags.tags);
+		var word = choice(word_n_tags.words);
+		s = s.replace('{w}',word)
+	}
+	return [s,tags];
+}
+function choice(list){
+	var index = Math.random()*list.length;
+	index = Math.round(index);
+	var found = list[index];
+	if (found != undefined){
+		return found;
+	}
+	else{
+		return choice(list);
+	}
+}
+
 function genSlide(){
 	currentSlide.title = buzzUp("{s} {m} {e}").capitalize();
 	currentSlide.text = buzzUp("A {s} {m} {e} in a {s} based {m} {e}");
