@@ -55,11 +55,13 @@ var w = {"x":10,"y":10,"width":200,"height":300,
 		"text":'Meet Sexy Giraffes',"image":null,'age':0,"activation":2,
 		"title":"Sexy Giraffes",'butx':25,'buty':2};
 //windows.push(w);
-var killSwitch; 
+var killSwitch;
+var titleImg={"bg":loadImage('title.png'),"windows":loadImage('windows.png')};
 var gameCnv;
 var gameCxt;
 var claudStats;
 var gameOverAnim;
+var unstarted;
 var backpos;
 var clickToRestart;
 var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin.png'),
@@ -87,6 +89,11 @@ function slideCheck(){
 }
 function clicked(x,y){
 	var selected = null;
+	if (unstarted){
+		unstarted = false;
+		gameinit();
+		return 0;
+	}
 	if (clickToRestart){
 		killSwitch = true;
 		gameOverAnim = false;
@@ -117,8 +124,19 @@ function clicked(x,y){
 		deadWindows.push(popup);
 	}
 }
-
 function init(){
+	gameCnv = document.getElementById('gameCanvas');
+	gameCxt = gameCnv.getContext('2d');
+	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)};
+	gameCnv.touchstart = function(e){
+	var t = e.touches[0];
+	
+	clicked(t.clientX-gameCnv.offsetLeft,t.clientY-gameCnv.offsetTop)};
+	unstarted = true;
+	renderTitleScreen();
+	
+}
+function gameinit(){
 	gameOverAnim = true;
 	backpos = 0;
 	clickToRestart = false;
@@ -127,14 +145,49 @@ function init(){
 	emCheckTimer = window.setInterval(embarrassmentCheck,1000/10);
 	slideCheckTimer = window.setInterval(slideCheck,1000/2);
 	claudStats = {"embarrassment":0,"slide":0,'count':0};
-	gameCnv = document.getElementById('gameCanvas');
-	gameCxt = gameCnv.getContext('2d');
 	console.log('init');
 	render();
-	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)};
+	
 	genSlide();
 }
-
+var floatyWindows=[];
+function handleFloaty(){
+	if (floatyWindows.length < 200){
+		floatyWindows.push(genFloatyWindow());
+	}
+	var killThese = [];
+	for(var i = 0; i<floatyWindows.length;i++){
+		gameCxt.drawImage(titleImg.windows, 30*floatyWindows[i].n, 0, 30, 30, floatyWindows[i].x, floatyWindows[i].y, 30, 30);
+		floatyWindows[i].y+=floatyWindows[i].speed;
+		if (floatyWindows[i].y > 464){
+			killThese.push(i);
+		}
+	}
+	var offset = 0;
+	for(var i=0;i < killThese.length;i++){
+		floatyWindows.splice(killThese[i]-(offset++),1);
+	}
+}
+function genFloatyWindow(){
+	var n = Math.floor(Math.random()*5);
+	var x = 376+(Math.random()*392);
+	var speed = (Math.random()*4)+3;
+	return {"n":n,"y":174,"x":x,"speed":speed};
+}
+function renderTitleScreen(){
+	if(unstarted){
+		window.requestAnimFrame(renderTitleScreen);
+	}
+	gameCxt.clearRect(0,0,gameCnv.width,gameCnv.height);
+	handleFloaty();
+	gameCxt.drawImage(titleImg.bg,0,0);
+	gameCxt.font = "20pt serif"
+	gameCxt.fillText("Click to start!",50,450);
+	gameCxt.font = "11pt serif";
+	gameCxt.fillText("You are trying to give an important tech presentation",10,40);
+	gameCxt.fillText("but your computer is infected with embarrassing popups",10,55);
+	gameCxt.fillText("become 'the minimisealist' before you die of embarrassment",10,70);
+}
 function handleDeadWindows(){
 	var offScreen = [];
 	for (var i = 0; i < deadWindows.length;i++){
@@ -153,7 +206,7 @@ function handleDeadWindows(){
 	}
 	var offset = 0;
 	for(var i=0;i < offScreen.length;i++){
-		deadWindows.splice(i-(offset++),1);
+		deadWindows.splice(offScreen[i]-(offset++),1);
 	}
 }
 
@@ -338,8 +391,8 @@ function genAdvert(){
 	actorCxt.font = '20pt sans-serif';
 	actorCxt.globalAlpha = 0.7;
 	for (w in words){
-		actorCxt.fillText(words[w],0,wordy);
-		wordy+=25;
+		//actorCxt.fillText(words[w],0,wordy);
+		//wordy+=25;
 	}
 	actorCxt.globalAlpha = 1;
 	//var new_image = new Image();
@@ -445,6 +498,9 @@ function genSlide(){
 		case 4:
 			currentSlide.speech = buzzUp("is {s} the future or just another {s} {e}?");
 		break;
+	}
+	if (claudStats.count > 100 && claudStats.count < 106){
+		currentSlide.speech = "You've been playing for ages! If I could I'd let you win."
 	}
 	currentSlide.date = new Date();
 }
