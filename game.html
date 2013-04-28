@@ -20,16 +20,33 @@ function loadImage(src){
 	new_image.src = src;
 	return new_image
 }
-var killSwitch = false;
+function loadAudio(src_list){
+	var new_audio = document.createElement("audio");
+	for (var i = 0; i<src_list.length; i++){
+		var source = document.createElement("source");
+		//[src,type]
+		source.src = src_list[i][0];
+		source.type = src_list[i][1];
+		new_audio.appendChild(source);
+	}
+	return new_audio;
+	
+}
+var bloopAudio = loadAudio([['bloop1.mp3','audio/mpeg'],['bloop1.ogg','audio/ogg']]);
 var windows = [];
 var deadWindows = [];
+var gameOverImgs = {"tomb":loadImage('tombstone.png'),"background":loadImage('GameOverBackground.png')};
 var w = {"x":10,"y":10,"width":200,"height":300,
 		"text":'Meet Sexy Giraffes',"image":null,'age':0,"activation":2,
 		"title":"Sexy Giraffes",'butx':25,'buty':2};
-windows.push(w); 
+windows.push(w);
+var killSwitch; 
 var gameCnv;
 var gameCxt;
-var claudStats = {"embarrassment":0,"slide":0,'count':0};
+var claudStats;
+var gameOverAnim;
+var backpos;
+var clickToRestart;
 var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin.png'),
 				 'blush':loadImage('claud-blush.png'),'speech':loadImage('speech.png')
 }
@@ -41,8 +58,10 @@ function embarrassmentCheck(){
 	if (claudStats.embarrassment > 1){
 		//game over
 		killSwitch = true;
-		alert('Game Over');
+		
 		window.clearInterval(emCheckTimer);
+		window.clearInterval(slideCheckTimer);
+		renderGameOver();
 	}
 }
 function slideCheck(){
@@ -53,6 +72,14 @@ function slideCheck(){
 }
 function clicked(x,y){
 	var selected = null;
+	if (clickToRestart){
+		killSwitch = true;
+		gameOverAnim = false;
+		window.clearInterval(emCheckTimer);
+		window.clearInterval(slideCheckTimer);
+		init();
+		return 0;
+	}
 	for(var i = 0; i < windows.length;i++){
 		var w = windows[i];
 		var butx = w.x+w.width-w.butx;
@@ -77,10 +104,13 @@ function clicked(x,y){
 }
 
 function init(){
+	gameOverAnim = true;
+	backpos = 0;
+	clickToRestart = false;
 	killSwitch = false;
 	emCheckTimer = window.setInterval(embarrassmentCheck,1000/10);
 	slideCheckTimer = window.setInterval(slideCheck,1000/2);
-	var claudStats = {"embarrasment":0,"slide":0,'count':0};
+	claudStats = {"embarrassment":0,"slide":0,'count':0};
 	gameCnv = document.getElementById('gameCanvas');
 	gameCxt = gameCnv.getContext('2d');
 	console.log('init');
@@ -215,8 +245,11 @@ function drawSlide(){
 }
 function addPopup(){
 	if (windows.length < Math.round(3+(claudStats.slide/10)) && Math.random() < (0.025)){
+		bloopAudio.play();
 		windows.push(genPopup());
+		
 	}
+	
 }
 function buzzWord(listName){
 	var index = Math.random()*data.buzzwords[listName].length+1;
@@ -284,6 +317,32 @@ function drawEmbMeter(){
 	gameCxt.strokeRect(10,400,40,100);
 	gameCxt.fillRect(10,500-(100*em),40,1+(100*em));
 	gameCxt.restore();
+}
+
+function renderGameOver(){
+	
+	if (gameOverAnim){
+		window.requestAnimFrame(renderGameOver);}
+	gameCxt.save();
+	gameCxt.clearRect(0,0,gameCnv.width,gameCnv.height);
+	gameCxt.drawImage(gameOverImgs.background,0,0-(backpos));
+	gameCxt.drawImage(gameOverImgs.tomb,300,800-(backpos*1.45));
+	if (backpos <600){ backpos+=2;}
+	else{
+		gameOverAnim = false;
+	}
+	if (backpos > 100){
+		clickToRestart = true;
+	}
+	gameCxt.globalAlpha = (backpos/600);
+	gameCxt.font = "30pt Arial";
+	gameCxt.fillText("Game Over",20,200);
+	gameCxt.font = "20pt Arial";
+	gameCxt.fillText("Score "+claudStats.count,20,250);
+	gameCxt.fillText("Slides "+claudStats.slide,20,280);
+	gameCxt.fillText("Click to retry",20,310);
+	gameCxt.restore();
+	
 }
 window.requestAnimFrame = (function(){
   return  window.requestAnimationFrame       ||
