@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title></title>
+<title>The Minimisealist</title>
 <style type="text/css">
 #gameCanvas{
 	margin-left:auto;
@@ -70,7 +70,7 @@ var claudImgs = {'body':loadImage('claud-body.png'),'chin':loadImage('claud-chin
 var emCheckTimer = null;
 var slideCheckTimer = null;
 function embarrassmentCheck(){
-	claudStats.embarrassment+= ((windows.length)/150)-0.0025;
+	claudStats.embarrassment+= ((windows.length)/160)-0.0025;
 	claudStats.embarrassment = Math.max(claudStats.embarrassment,0);
 	if (claudStats.embarrassment > 1){
 		//game over
@@ -127,7 +127,7 @@ function clicked(x,y){
 function init(){
 	gameCnv = document.getElementById('gameCanvas');
 	gameCxt = gameCnv.getContext('2d');
-	gameCnv.onmousedown = function(e){clicked(e.offsetX,e.offsetY)};
+	gameCnv.onmousedown = function(e){clicked(e.clientX-gameCnv.offsetLeft,e.clientY-gameCnv.offsetTop)};
 	gameCnv.touchstart = function(e){
 	var t = e.touches[0];
 	
@@ -315,7 +315,8 @@ function drawSlide(){
 	gameCxt.restore();
 }
 function addPopup(){
-	if (windows.length < Math.round(3+(claudStats.slide/10)) && Math.random() < (0.025)){
+	var chance = 0.0125 + (0.001*claudStats.slide);
+	if (windows.length < Math.round(3+(claudStats.slide/20)) && Math.random() < (chance)){
 		bloopAudio.play();
 		windows.push(genPopup());
 		
